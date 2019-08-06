@@ -1,0 +1,6 @@
+__pycache__/
+gfs_data/
+gfs_output/
+thresholds/
+gfs_rain_cron.log
+
