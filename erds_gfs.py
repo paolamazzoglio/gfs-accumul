@@ -1,3 +1,4 @@
+import datetime
 import gfs_manager
 import glob
 import os
@@ -20,6 +21,8 @@ if __name__ == '__main__':
         utils.delete_last_update(relevant_subfolder)
     except:
         pass
+    
+    last_update = datetime.datetime.strptime(relevant_subfolder, 'gfs.%Y%m%d/%H').replace(tzinfo=datetime.timezone.utc)
 
     # Download of the most recent GFS data
     try:
@@ -52,3 +55,10 @@ if __name__ == '__main__':
         utils.write_geotiff(accum_rainfall, tif_abspath)
         # Alerts evaluations
         utils.compare_precip(accum_rainfall, hours)
+       
+    # Saving last update
+    update_abspath = os.path.join(settings.GFS_OUTPUT_DIR, settings.UPDATE_FILE)
+    with open(update_abspath, 'w') as update_file:
+        update_file.write('latest model runtime:\n')
+        update_file.write(last_update.strftime(settings.DATETIME_FORMAT))
+        
