@@ -1,3 +1,4 @@
+import datetime
 import gfs_manager
 import glob
 import os
@@ -11,7 +12,6 @@ if __name__ == '__main__':
     try:
         ftp = utils.connect('grib')
         relevant_subfolder = utils.check_gfs_data(ftp)
-        print('Last upgrade:', relevant_subfolder[4:])
     except:
         print('Cannot connect to the ftp site and get content list!')
 
@@ -28,27 +28,38 @@ if __name__ == '__main__':
     except:
         print('Problems with the download!')
 
-    # Creation of a list of GRIB data previously downloaded
+    # Creation of a list of grib data previously downloaded
     gfss = glob.glob(os.path.join(settings.GFS_DATA_DIR, 'gfs_*'))
+    gfss.sort(reverse=False)
 
-    # Conversion from GRIB_APCP to bin_APCP
-    print('Conversion from GRIB to bin...')
+    # Conversion from grib to bin
+    print('Conversion from grib to bin...')
     for gfs in gfss:
         gfsobj = gfs_manager.GFSManager(gfs)
         gfsobj.APCP2bin()
     print('Conversion from grib to bin completed!')
 
     cumulate_hours = settings.aggregation_intervals
-    cumulate_hours.sort(reverse=False)
+    cumulate_hours.sort(reverse=True)
 
-    for hours in cumulate_hours:
-        print('Working on', str(hours), 'hours accumulation... ')
-        # Evaluation of accumulated rainfall
-        apcp_cum = utils.cumulate(settings.GFS_DATA_DIR, hours)
-        # Reverse from 0/360 to -180/+180
-        accum_rainfall = utils.reverse_array(apcp_cum)
-        # Accumulated rainfall geotiff saving
-        tif_abspath = os.path.join(settings.GFS_OUTPUT_DIR, settings.TIFF_FORMAT_CUM.format(hours))
-        utils.write_geotiff(accum_rainfall, tif_abspath)
-        # Alerts evaluations
-        utils.compare_precip(accum_rainfall, hours)
+    start_dt = datetime.datetime.strptime(relevant_subfolder[4:12] + relevant_subfolder[-2:], '%Y%m%d%H').replace(tzinfo=datetime.timezone.utc)
+
+    # The first serie is built from scratch
+    agg_interval = cumulate_hours[0]
+    print('Working on', str(agg_interval), 'hours accumulation...')
+    longest_serie = utils.cumulate(start_dt, agg_interval)
+    utils.compare_precip(longest_serie.accumul, agg_interval)
+
+    # The other series are subserie of the previous
+    for agg_interval in cumulate_hours[1:]:
+        print('Working on', str(agg_interval), 'hours accumulation...')
+        duration = datetime.timedelta(hours=agg_interval)
+        serie = longest_serie.latest_subserie(duration, agg_interval)
+        serie.save_accumul()
+        utils.compare_precip(serie.accumul, agg_interval)
+
+    # Saving last update
+    update_abspath = os.path.join(settings.GFS_OUTPUT_DIR, settings.UPDATE_FILE)
+    with open(update_abspath, 'w') as update_file:
+        update_file.write('latest measure ended at:\n')
+        update_file.write(serie.start_dt.strftime(settings.DATETIME_FORMAT))

@@ -25,6 +25,14 @@ TIFF_FORMAT_CUM = 'gfs_apcp_accumulated_{:03d}h.tif'
 
 TIFF_FORMAT_ALERTS = 'gfs_apcp_alerts_{:03d}h.tif'
 
+UPDATE_FILE = 'update.txt'
+
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M%z'
+
 aggregation_intervals = [12, 24, 48, 72, 96]
 
 apcp_shape = (721, 1440)
+
+
+
+

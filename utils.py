@@ -1,8 +1,6 @@
-import datetime
-import gfs_manager
 import gdal
+import gfs_manager
 import glob
-import numpy as np
 import os
 import osr
 import settings
@@ -40,11 +38,13 @@ def check_gfs_data(ftp):
         else:
             continue
     ftp.close()
+    del ftp
 
 
 
 def delete_last_update(relevant_subfolder):
     gfss = glob.glob(os.path.join(settings.GFS_DATA_DIR, settings.APCP_FORMAT))
+    gfss.sort(reverse=True)
     last_gfs_path = gfss[0]
     last_gfs = last_gfs_path[-18:-10] + '/' + str(last_gfs_path[-10:-8])
     if relevant_subfolder[4:] != last_gfs:
@@ -63,7 +63,7 @@ def download_gfs_data(gfs_data_folder, relevant_subfolder):
     if settings.GFS_TYPE == 'nomads':
         for prev_time in range(6, 97, 6):
             try:
-                # The code tries to download the data.
+                # It tries to download the data.
                 if prev_time < 10:
                     prev_time = '00' + str(prev_time)
                 else:
@@ -83,55 +83,11 @@ def download_gfs_data(gfs_data_folder, relevant_subfolder):
 
 
 
-def get_apcps(datadir):
+def get_apcps():
     apcps = []
-    for apcp_abspath in glob.iglob(os.path.join(datadir, settings.APCP_FORMAT)):
+    for apcp_abspath in glob.iglob(os.path.join(settings.GFS_DATA_DIR, settings.APCP_FORMAT)):
         apcps.append(os.path.basename(apcp_abspath))
     return apcps
-
-
-
-def cumulate(datadir, hours):
-    duration = datetime.timedelta(hours=hours)
-
-    apcp_file_list = get_apcps(datadir)
-    apcp_file_list.sort()
-
-    first_date = apcp_file_list[0].split('_')[2]
-    first_date = first_date[0:-2]
-    first_date = datetime.datetime.strptime(first_date, settings.DATE_FORMAT)
-    start_dt = first_date.replace(tzinfo=datetime.timezone.utc)
-    end_dt = start_dt + duration
-
-    num_file = 0
-
-    for file in apcp_file_list:
-        temp = int(file[-7:-4])
-        time_shift = datetime.timedelta(hours=temp)
-        end_dt_temp = start_dt + time_shift
-
-        if end_dt_temp <= end_dt:
-            num_file = num_file + 1
-        else:
-            pass
-
-    apcp_file_list_cum = apcp_file_list[0:num_file]
-    apcp = np.zeros(settings.apcp_shape)
-    for apcp_file in apcp_file_list_cum:
-        apcp += np.fromfile(os.path.join(settings.GFS_DATA_DIR, apcp_file), np.float32).reshape(settings.apcp_shape[0], settings.apcp_shape[1])
-    apcp = apcp[0:-1,:]
-    return apcp
-
-
-
-def reverse_array(array):
-    right_array = array[:, 720:]
-    left_array = array[:, :720]
-    reversed_array = np.hstack((right_array, left_array))
-    reversed_array = np.rot90(np.rot90(np.rot90(reversed_array)))
-    del left_array
-    del right_array
-    return reversed_array
 
 
 
@@ -160,6 +116,12 @@ def tiff2array(tif_abspath):
     array = array.astype(int)
     return array
 
+
+
+def cumulate(start_dt, agg_interval):
+    time_serie = gfs_manager.GFS_APCP_TimeSerie(start_dt, agg_interval, settings.GFS_DATA_DIR)
+    time_serie.save_accumul()
+    return time_serie
 
 
 def compare_precip(accum_rainfall, hours):
