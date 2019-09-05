@@ -20,6 +20,8 @@ if __name__ == '__main__':
         utils.delete_last_update(relevant_subfolder)
     except:
         pass
+    
+    last_update = datetime.datetime.strptime(relevant_subfolder, 'gfs.%Y%m%d/%H').replace(tzinfo=datetime.timezone.utc)
 
     # Download of the most recent GFS data
     try:
@@ -63,3 +65,4 @@ if __name__ == '__main__':
     with open(update_abspath, 'w') as update_file:
         update_file.write('latest measure ended at:\n')
         update_file.write(serie.start_dt.strftime(settings.DATETIME_FORMAT))
+        

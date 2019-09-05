@@ -32,7 +32,3 @@ DATETIME_FORMAT = '%Y-%m-%dT%H:%M%z'
 aggregation_intervals = [12, 24, 48, 72, 96]
 
 apcp_shape = (721, 1440)
-
-
-
-
